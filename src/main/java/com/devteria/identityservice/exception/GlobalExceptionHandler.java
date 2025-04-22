@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 
 @ControllerAdvice
-@Slf4j
+@Slf4j(topic = "GlobalExceptionHandler")
 public class GlobalExceptionHandler {
 
     private static final String MIN_ATTRIBUTE = "min";
@@ -56,37 +56,41 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(value = MethodArgumentNotValidException.class)
     ResponseEntity<ApiResponse> handlingValidation(MethodArgumentNotValidException exception){
-        String enumKey = exception.getFieldError().getDefaultMessage();
+        String numKey = exception.getFieldError().getDefaultMessage();
 
         ErrorCode errorCode = ErrorCode.INVALID_KEY;
         Map<String, Object> attributes = null;
-        try {
-            errorCode = ErrorCode.valueOf(enumKey);
+        try{
+            errorCode = ErrorCode.valueOf(numKey);
 
-            var constraintViolation = exception.getBindingResult()
+
+            /**
+             * Retrieve the list of all validation errors.
+             * Access specific field errors.
+             * Extract error messages or rejected values.*/
+            var constrainViolation = exception.getBindingResult()
                     .getAllErrors().getFirst().unwrap(ConstraintViolation.class);
+            // return an object
 
-            attributes = constraintViolation.getConstraintDescriptor().getAttributes();
+            attributes = constrainViolation.getConstraintDescriptor().getAttributes();
+            log.info("Attributes: {}", attributes.toString());
 
-            log.info(attributes.toString());
-
-        } catch (IllegalArgumentException e){
+        }catch (IllegalArgumentException e){
 
         }
 
         ApiResponse apiResponse = new ApiResponse();
-
         apiResponse.setCode(errorCode.getCode());
-        apiResponse.setMessage(Objects.nonNull(attributes) ?
-                mapAttribute(errorCode.getMessage(), attributes)
-                : errorCode.getMessage());
+        apiResponse.setMessage(Objects.nonNull(attributes)
+        ? mapAttribute(errorCode.getMessage(), attributes) : errorCode.getMessage());
 
         return ResponseEntity.badRequest().body(apiResponse);
     }
 
-    private String mapAttribute(String message, Map<String, Object> attributes){
+    private String mapAttribute(String message, Map<String, Object> attributes) {
         String minValue = String.valueOf(attributes.get(MIN_ATTRIBUTE));
 
         return message.replace("{" + MIN_ATTRIBUTE + "}", minValue);
+
     }
 }
